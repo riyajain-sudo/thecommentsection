@@ -1,4 +1,4 @@
-# The Clothesline 🎐
+# The Comment Section🎐
 
 A quiet corner of the internet to hang up poems and half-formed thoughts —
 signed or anonymous — for anyone to read. Built on the MERN stack
