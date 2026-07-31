@@ -1,0 +1,686 @@
+/* ============================================================
+   THE CLOTHESLINE — token system
+   Palette: soft, washed-out pastels. Poems read like notes
+   pinned to a line and left to sway in the breeze.
+   ============================================================ */
+
+:root {
+  /* Color */
+  --color-bg: #fdf6f9;
+  --color-bg-alt: #f3eefb;
+  --color-lavender: #c9b6e4;
+  --color-lavender-deep: #a98fd1;
+  --color-sky: #a8d8ea;
+  --color-rose: #f6b8c1;
+  --color-sage: #bfe3d0;
+  --color-ink: #4a4460;
+  --color-ink-soft: #7a7290;
+  --color-paper: #fffdf9;
+  --color-line: #d8cbe8;
+
+  /* Type */
+  --font-display: "Fraunces", "Iowan Old Style", serif;
+  --font-body: "Nunito", -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", monospace;
+
+  /* Layout */
+  --radius-note: 6px;
+  --shadow-soft: 0 10px 24px -12px rgba(74, 68, 96, 0.25);
+  --shadow-lift: 0 18px 34px -14px rgba(74, 68, 96, 0.32);
+  --max-width: 1080px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: linear-gradient(180deg, var(--color-bg) 0%, var(--color-bg-alt) 100%);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  font-weight: 500;
+  margin: 0;
+  color: var(--color-ink);
+}
+
+p {
+  margin: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button, input, textarea, select {
+  font-family: inherit;
+}
+
+::selection {
+  background: var(--color-rose);
+  color: var(--color-paper);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-lavender-deep);
+  outline-offset: 3px;
+}
+
+.container {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* ============================================================
+   Ambient background blobs
+   ============================================================ */
+.blobs {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(50px);
+  opacity: 0.45;
+  animation: drift 22s ease-in-out infinite;
+}
+
+.blob--1 {
+  width: 340px;
+  height: 340px;
+  top: -80px;
+  left: -100px;
+  background: var(--color-lavender);
+  animation-duration: 26s;
+}
+
+.blob--2 {
+  width: 280px;
+  height: 280px;
+  top: 30%;
+  right: -120px;
+  background: var(--color-sky);
+  animation-duration: 30s;
+  animation-delay: -6s;
+}
+
+.blob--3 {
+  width: 260px;
+  height: 260px;
+  bottom: -100px;
+  left: 20%;
+  background: var(--color-rose);
+  animation-duration: 24s;
+  animation-delay: -12s;
+}
+
+@keyframes drift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, 40px) scale(1.08); }
+  66% { transform: translate(-24px, 18px) scale(0.96); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .blob { animation: none; }
+}
+
+/* ============================================================
+   Navbar
+   ============================================================ */
+.navbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 22px 24px;
+  max-width: var(--max-width);
+  margin: 0 auto;
+}
+
+.navbar__brand {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 600;
+}
+
+.navbar__brand span {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: var(--color-ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+
+.navbar__links {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 999px;
+  border: none;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.92rem;
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+.btn--primary {
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+
+.btn--primary:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-soft);
+}
+
+.btn--ghost {
+  background: transparent;
+  color: var(--color-ink);
+  border: 1.5px solid var(--color-line);
+}
+
+.btn--ghost:hover {
+  background: rgba(169, 143, 209, 0.12);
+}
+
+.btn:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* ============================================================
+   Hero
+   ============================================================ */
+.hero {
+  text-align: center;
+  padding: 40px 24px 20px;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.hero h1 {
+  font-size: clamp(2rem, 5vw, 2.9rem);
+  line-height: 1.15;
+}
+
+.hero h1 em {
+  font-style: italic;
+  color: var(--color-lavender-deep);
+}
+
+.hero p {
+  margin-top: 14px;
+  color: var(--color-ink-soft);
+  font-size: 1.05rem;
+  line-height: 1.6;
+}
+
+/* ============================================================
+   The line — controls bar with the rope motif
+   ============================================================ */
+.line-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  margin: 32px 0 8px;
+  padding-bottom: 18px;
+  position: relative;
+}
+
+.line-controls::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--color-line),
+    var(--color-line) 10px,
+    transparent 10px,
+    transparent 16px
+  );
+}
+
+.search-input, .select-input {
+  padding: 10px 16px;
+  border-radius: 999px;
+  border: 1.5px solid var(--color-line);
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-size: 0.92rem;
+}
+
+.search-input {
+  min-width: 220px;
+  flex: 1;
+}
+
+.search-input:focus, .select-input:focus {
+  border-color: var(--color-lavender-deep);
+}
+
+/* ============================================================
+   Poem grid — the clothesline
+   ============================================================ */
+.clothesline-row {
+  position: relative;
+  padding-top: 26px;
+  margin-bottom: 20px;
+}
+
+.clothesline-row::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -4px;
+  right: -4px;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, var(--color-line) 6%, var(--color-line) 94%, transparent);
+  border-radius: 3px;
+}
+
+.poem-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 40px 28px;
+}
+
+.poem-card {
+  position: relative;
+  background: var(--color-paper);
+  border-radius: var(--radius-note);
+  padding: 22px 20px 18px;
+  box-shadow: var(--shadow-soft);
+  transform-origin: top center;
+  animation: sway 7s ease-in-out infinite;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.poem-card:nth-child(2n) { animation-duration: 8.5s; animation-delay: -1.2s; }
+.poem-card:nth-child(3n) { animation-duration: 6.2s; animation-delay: -3s; }
+.poem-card:nth-child(4n) { animation-duration: 9s; animation-delay: -2s; }
+.poem-card:nth-child(5n) { animation-duration: 7.6s; animation-delay: -4s; }
+
+.poem-card:hover {
+  transform: translateY(-4px) rotate(0deg) !important;
+  box-shadow: var(--shadow-lift);
+  animation-play-state: paused;
+}
+
+@keyframes sway {
+  0%, 100% { transform: rotate(-1.1deg); }
+  50% { transform: rotate(1.1deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .poem-card { animation: none; }
+}
+
+.poem-card__peg {
+  position: absolute;
+  top: -14px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 18px;
+  height: 20px;
+}
+
+.poem-card__peg svg { width: 100%; height: 100%; }
+
+.poem-card__tag {
+  align-self: flex-start;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-ink-soft);
+  background: var(--color-bg-alt);
+  padding: 3px 9px;
+  border-radius: 999px;
+}
+
+.poem-card__title {
+  font-size: 1.15rem;
+  line-height: 1.3;
+}
+
+.poem-card__excerpt {
+  font-family: var(--font-display);
+  font-style: italic;
+  color: var(--color-ink-soft);
+  font-size: 0.98rem;
+  line-height: 1.55;
+  white-space: pre-line;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.poem-card__footer {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: var(--color-ink-soft);
+}
+
+.poem-card__author {
+  font-weight: 700;
+}
+
+.poem-card__likes {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ============================================================
+   Empty / loading states
+   ============================================================ */
+.state-block {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--color-ink-soft);
+}
+
+.state-block h3 {
+  color: var(--color-ink);
+  margin-bottom: 8px;
+}
+
+.loader {
+  width: 34px;
+  height: 34px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  border: 3px solid var(--color-line);
+  border-top-color: var(--color-lavender-deep);
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ============================================================
+   Pagination
+   ============================================================ */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 14px;
+  margin: 44px 0 20px;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--color-ink-soft);
+}
+
+/* ============================================================
+   Submit page
+   ============================================================ */
+.submit-card {
+  max-width: 640px;
+  margin: 20px auto 60px;
+  background: var(--color-paper);
+  border-radius: 16px;
+  padding: 36px 34px;
+  box-shadow: var(--shadow-soft);
+  animation: rise 0.5s ease both;
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.field {
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.field label {
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: var(--color-ink-soft);
+}
+
+.field input[type="text"],
+.field textarea {
+  border: 1.5px solid var(--color-line);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 1rem;
+  background: var(--color-bg);
+  color: var(--color-ink);
+  resize: vertical;
+}
+
+.field textarea {
+  min-height: 220px;
+  font-family: var(--font-display);
+  line-height: 1.6;
+}
+
+.field input:focus, .field textarea:focus {
+  border-color: var(--color-lavender-deep);
+  background: var(--color-paper);
+}
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.toggle {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--color-line);
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  flex-shrink: 0;
+}
+
+.toggle[aria-pressed="true"] {
+  background: var(--color-lavender-deep);
+}
+
+.toggle::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--color-paper);
+  transition: transform 0.2s ease;
+}
+
+.toggle[aria-pressed="true"]::after {
+  transform: translateX(20px);
+}
+
+.toggle-row small {
+  color: var(--color-ink-soft);
+}
+
+.tag-input-hint {
+  font-size: 0.78rem;
+  color: var(--color-ink-soft);
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.banner {
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  margin-bottom: 18px;
+}
+
+.banner--error {
+  background: #fbe3e6;
+  color: #9a3b47;
+}
+
+.banner--success {
+  background: #e2f3e9;
+  color: #2f6b4c;
+}
+
+/* ============================================================
+   Poem detail page
+   ============================================================ */
+.poem-detail {
+  max-width: 640px;
+  margin: 10px auto 60px;
+  background: var(--color-paper);
+  border-radius: 16px;
+  padding: 44px 40px;
+  box-shadow: var(--shadow-soft);
+  animation: rise 0.45s ease both;
+  position: relative;
+}
+
+.poem-detail__meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--color-ink-soft);
+  font-size: 0.85rem;
+  margin-bottom: 18px;
+}
+
+.poem-detail__title {
+  font-size: 2rem;
+  margin-bottom: 18px;
+}
+
+.poem-detail__body {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  line-height: 1.85;
+  white-space: pre-line;
+  color: var(--color-ink);
+}
+
+.poem-detail__tags {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 26px;
+}
+
+.poem-detail__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 1px dashed var(--color-line);
+}
+
+.like-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--color-bg-alt);
+  border: none;
+  border-radius: 999px;
+  padding: 10px 18px;
+  font-weight: 700;
+  cursor: pointer;
+  color: var(--color-ink);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.like-btn:hover {
+  background: var(--color-rose);
+  transform: scale(1.04);
+}
+
+.like-btn.liked {
+  background: var(--color-rose);
+}
+
+.like-btn__heart {
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.like-btn.pop .like-btn__heart {
+  transform: scale(1.35);
+}
+
+/* ============================================================
+   Footer
+   ============================================================ */
+.footer {
+  text-align: center;
+  padding: 40px 24px 60px;
+  color: var(--color-ink-soft);
+  font-size: 0.85rem;
+}
+
+/* ============================================================
+   Responsive
+   ============================================================ */
+@media (max-width: 560px) {
+  .poem-detail, .submit-card {
+    padding: 28px 22px;
+  }
+  .navbar {
+    flex-direction: column;
+    gap: 14px;
+  }
+}
