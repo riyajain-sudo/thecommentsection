@@ -6,11 +6,13 @@ import connectDB from "./config/db.js";
 import poemRoutes from "./routes/poems.js";
 import authRoutes from "./routes/auth.js";
 
-import path from "path";
-import { fileURLToPath } from "url";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+//this is for Cloudflare to work with Vite, otherwise it will throw a 403 error when trying to access the API from the frontend
+// import path from "path";
+// import { fileURLToPath } from "url";
+
+// const __filename = fileURLToPath(import.meta.url);
+// const __dirname = path.dirname(__filename);
 
 dotenv.config();
 
@@ -56,16 +58,18 @@ app.use("/api/auth", authLimiter, authRoutes);
 
 app.get("/api/health", (req, res) => res.json({ status: "ok" }));
 
-// Serve the built React (Vite) frontend.
-// This must come BEFORE the 404 handler below, or it will never run.
-app.use(express.static(path.join(__dirname, "../frontend/dist")));
 
-app.get("*", (req, res, next) => {
-  // Let unmatched /api routes still fall through to the 404 handler
-  // instead of being served index.html.
-  if (req.path.startsWith("/api")) return next();
-  res.sendFile(path.join(__dirname, "../frontend/dist", "index.html"));
-});
+//for cloudflare
+// // Serve the built React (Vite) frontend.
+// // This must come BEFORE the 404 handler below, or it will never run.
+// app.use(express.static(path.join(__dirname, "../frontend/dist")));
+
+// app.get("*", (req, res, next) => {
+//   // Let unmatched /api routes still fall through to the 404 handler
+//   // instead of being served index.html.
+//   if (req.path.startsWith("/api")) return next();
+//   res.sendFile(path.join(__dirname, "../frontend/dist", "index.html"));
+// });
 
 app.use((req, res) => {
   res.status(404).json({ message: "Route not found" });

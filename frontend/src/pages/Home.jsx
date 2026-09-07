@@ -23,7 +23,7 @@ export default function Home() {
         })
         .catch(() =>
           setError(
-            "Couldn't reach the clothesline. Check that the API server is running."
+            "Couldn't reach the CommentSection. Check that the API server is running."
           )
         )
         .finally(() => setLoading(false));

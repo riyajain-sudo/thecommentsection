@@ -49,7 +49,7 @@ export default function App() {
         </Routes>
       </main>
       <footer className="footer">
-        The Clothesline — a small, quiet space for words.
+        The CommentSection — a small, quiet space for words.
       </footer>
     </AuthProvider>
   );

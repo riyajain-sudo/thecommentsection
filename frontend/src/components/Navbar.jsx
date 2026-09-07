@@ -13,7 +13,7 @@ export default function Navbar() {
   return (
     <nav className="navbar">
       <Link to="/" className="navbar__brand">
-        The Clothesline <span>poems &amp; thoughts</span>
+        The CommentSection <span>poems &amp; thoughts</span>
       </Link>
       <div className="navbar__links">
         {user ? (
