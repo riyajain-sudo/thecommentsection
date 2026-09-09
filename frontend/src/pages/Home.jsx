@@ -1,36 +1,100 @@
-import { useEffect, useState } from "react";
-import { fetchPoems } from "../api/client";
+import { useCallback, useEffect, useState } from "react";
+import { fetchPoems, fetchMyPoems, fetchFavorites } from "../api/client";
+import { useAuth } from "../context/AuthContext";
+import { usePoemFeed, INITIAL_PAGE_SIZE } from "../hooks/usePoemFeed";
+import { useLoadMoreSentinel } from "../hooks/useLoadMoreSentinel";
 import PoemCard from "../components/PoemCard";
 import Loader from "../components/Loader";
+import Dropdown from "../components/Dropdown";
+
+const SEARCH_PLACEHOLDER = "Search titles, words, or a username...";
+
+const SORT_OPTIONS = [
+  { value: "new", label: "Newest first" },
+  { value: "popular", label: "Most loved" },
+];
+
+const MINE_FILTER_OPTIONS = [
+  { value: "all", label: "All poems" },
+  { value: "signed", label: "Signed" },
+  { value: "unsigned", label: "Unsigned" },
+];
+
+const TAB_META = {
+  line: {
+    label: "The Line",
+    loadingLabel: "Walking down the line...",
+    emptyTitle: "The line is empty",
+    emptyBody: "Be the first to pin something up.",
+  },
+  mine: {
+    label: "Hung by Me",
+    loadingLabel: "Gathering what you've hung up...",
+    emptyTitle: "Nothing here yet",
+    emptyBody: "Poems you post will show up on this line.",
+  },
+  favorites: {
+    label: "Favorites",
+    loadingLabel: "Gathering your favorites...",
+    emptyTitle: "Nothing here yet",
+    emptyBody: "Poems you like will show up on this line.",
+  },
+};
 
 export default function Home() {
-  const [poems, setPoems] = useState([]);
+  const { user } = useAuth();
+  const [tab, setTab] = useState("line"); // "line" | "mine" | "favorites"
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState("new");
-  const [page, setPage] = useState(1);
-  const [pages, setPages] = useState(1);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [mineFilter, setMineFilter] = useState("all"); // "all" | "signed" | "unsigned"
+  const [mineSearch, setMineSearch] = useState("");
+  const [favSearch, setFavSearch] = useState("");
 
+  const lineFetcher = useCallback(
+    ({ page, limit }) => fetchPoems({ search, sort, page, limit }),
+    [search, sort]
+  );
+  const lineFeed = usePoemFeed({
+    fetcher: lineFetcher,
+    active: tab === "line",
+    resetKey: `${search}|${sort}`,
+    debounceMs: 300,
+  });
+
+  const mineSigned = mineFilter === "signed" ? "true" : mineFilter === "unsigned" ? "false" : undefined;
+  const mineFetcher = useCallback(
+    ({ page, limit }) => fetchMyPoems({ page, limit, signed: mineSigned, search: mineSearch }),
+    [mineSigned, mineSearch]
+  );
+  const mineFeed = usePoemFeed({
+    fetcher: mineFetcher,
+    active: tab === "mine" && !!user,
+    resetKey: `${tab === "mine"}|${mineFilter}|${mineSearch}`,
+    debounceMs: 300,
+  });
+
+  const favoritesFetcher = useCallback(
+    ({ page, limit }) => fetchFavorites({ page, limit, search: favSearch }),
+    [favSearch]
+  );
+  const favoritesFeed = usePoemFeed({
+    fetcher: favoritesFetcher,
+    active: tab === "favorites" && !!user,
+    resetKey: `${tab === "favorites"}|${favSearch}`,
+    debounceMs: 300,
+  });
+
+  // If the user logs out while looking at a tab that requires an account,
+  // fall back to the public line rather than showing a tab that no longer
+  // applies.
   useEffect(() => {
-    const timeout = setTimeout(() => {
-      setLoading(true);
-      setError("");
-      fetchPoems({ search, sort, page })
-        .then((data) => {
-          setPoems(data.poems);
-          setPages(data.pages);
-        })
-        .catch(() =>
-          setError(
-            "Couldn't reach the CommentSection. Check that the API server is running."
-          )
-        )
-        .finally(() => setLoading(false));
-    }, 300);
+    if (!user && tab !== "line") setTab("line");
+  }, [user, tab]);
 
-    return () => clearTimeout(timeout);
-  }, [search, sort, page]);
+  const feed = { line: lineFeed, mine: mineFeed, favorites: favoritesFeed }[tab];
+  const meta = TAB_META[tab];
+  const activeSearch = { line: search, mine: mineSearch, favorites: favSearch }[tab];
+  const sentinelRef = useLoadMoreSentinel(feed);
 
   return (
     <>
@@ -45,75 +109,106 @@ export default function Home() {
       </section>
 
       <div className="container">
-        <div className="line-controls">
-          <input
-            className="search-input"
-            type="text"
-            placeholder="Search titles and words..."
-            value={search}
-            onChange={(e) => {
-              setPage(1);
-              setSearch(e.target.value);
-            }}
-          />
-          <select
-            className="select-input"
-            value={sort}
-            onChange={(e) => {
-              setPage(1);
-              setSort(e.target.value);
-            }}
+        <div className="home-tabs">
+          <button
+            className={`home-tab${tab === "line" ? " is-active" : ""}`}
+            onClick={() => setTab("line")}
           >
-            <option value="new">Newest first</option>
-            <option value="popular">Most loved</option>
-          </select>
+            The Line
+          </button>
+          {user && (
+            <>
+              <button
+                className={`home-tab${tab === "mine" ? " is-active" : ""}`}
+                onClick={() => setTab("mine")}
+              >
+                Hung by Me
+              </button>
+              <button
+                className={`home-tab${tab === "favorites" ? " is-active" : ""}`}
+                onClick={() => setTab("favorites")}
+              >
+                Favorites
+              </button>
+            </>
+          )}
         </div>
 
-        {loading && <Loader label="Walking down the line..." />}
+        {tab === "line" && (
+          <div className="line-controls">
+            <input
+              className="search-input"
+              type="text"
+              placeholder={SEARCH_PLACEHOLDER}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <Dropdown value={sort} onChange={setSort} options={SORT_OPTIONS} />
+          </div>
+        )}
 
-        {!loading && error && (
+        {tab === "mine" && (
+          <div className="line-controls">
+            <input
+              className="search-input"
+              type="text"
+              placeholder={SEARCH_PLACEHOLDER}
+              value={mineSearch}
+              onChange={(e) => setMineSearch(e.target.value)}
+            />
+            <Dropdown value={mineFilter} onChange={setMineFilter} options={MINE_FILTER_OPTIONS} />
+          </div>
+        )}
+
+        {tab === "favorites" && (
+          <div className="line-controls">
+            <input
+              className="search-input"
+              type="text"
+              placeholder={SEARCH_PLACEHOLDER}
+              value={favSearch}
+              onChange={(e) => setFavSearch(e.target.value)}
+            />
+          </div>
+        )}
+
+        {feed.loading && <Loader label={meta.loadingLabel} />}
+
+        {!feed.loading && feed.error && (
           <div className="state-block">
             <h3>Something snagged</h3>
-            <p>{error}</p>
+            <p>{feed.error}</p>
           </div>
         )}
 
-        {!loading && !error && poems.length === 0 && (
+        {!feed.loading && !feed.error && feed.items.length === 0 && (
           <div className="state-block">
-            <h3>The line is empty</h3>
-            <p>Be the first to pin something up.</p>
+            <h3>{activeSearch ? "No matches" : meta.emptyTitle}</h3>
+            <p>
+              {activeSearch
+                ? "No poems match your search."
+                : tab === "mine" && mineFilter !== "all"
+                ? `No ${mineFilter} poems here yet.`
+                : meta.emptyBody}
+            </p>
           </div>
         )}
 
-        {!loading && !error && poems.length > 0 && (
+        {!feed.loading && !feed.error && feed.items.length > 0 && (
           <div className="clothesline-row">
             <div className="poem-grid">
-              {poems.map((poem) => (
-                <PoemCard key={poem.id} poem={poem} />
+              {feed.items.map((poem) => (
+                <PoemCard key={poem.id} poem={poem} showEditIcon={tab !== "line"} />
               ))}
             </div>
-          </div>
-        )}
 
-        {!loading && !error && pages > 1 && (
-          <div className="pagination">
-            <button
-              className="btn btn--ghost"
-              disabled={page <= 1}
-              onClick={() => setPage((p) => p - 1)}
-            >
-              ← Prev
-            </button>
-            <span>
-              {page} / {pages}
-            </span>
-            <button
-              className="btn btn--ghost"
-              disabled={page >= pages}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              Next →
-            </button>
+            <div ref={sentinelRef} />
+
+            {feed.loadingMore && <Loader label="Pulling more off the line..." />}
+
+            {!feed.loadingMore && !feed.hasMore && feed.items.length > INITIAL_PAGE_SIZE && (
+              <p className="feed-end">That's every poem on this line.</p>
+            )}
           </div>
         )}
       </div>

@@ -1,14 +1,8 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 export default function Navbar() {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
-
-  const handleLogout = () => {
-    logout();
-    navigate("/");
-  };
+  const { user } = useAuth();
 
   return (
     <nav className="navbar">
@@ -18,16 +12,13 @@ export default function Navbar() {
       <div className="navbar__links">
         {user ? (
           <>
-            <Link to="/favorites" className="btn btn--ghost">
-              ♡ Favorites
+            <Link to="/account" className="navbar__user">
+              <span className="navbar__user-avatar">{user.username[0]?.toUpperCase()}</span>
+              {user.username}
             </Link>
-            <span style={{ fontWeight: 700, fontSize: "0.9rem" }}>{user.username}</span>
             <Link to="/submit" className="btn btn--primary">
               Hang up a poem
             </Link>
-            <button className="btn btn--ghost" onClick={handleLogout}>
-              Log out
-            </button>
           </>
         ) : (
           <>

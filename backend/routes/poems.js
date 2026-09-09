@@ -2,13 +2,27 @@ import express from "express";
 import Poem from "../models/Poem.js";
 import User from "../models/User.js";
 import { requireAuth, attachUserIfPresent } from "../middleware/auth.js";
+import { paginate } from "../utils/paginate.js";
 
 const router = express.Router();
 
-const paginate = (query) => {
-  const page = Math.max(parseInt(query.page, 10) || 1, 1);
-  const limit = Math.min(Math.max(parseInt(query.limit, 10) || 12, 1), 50);
-  return { page, limit, skip: (page - 1) * limit };
+// Builds the $or clause for a text search across a poem's title/body, plus
+// its author's username — but a username match only ever surfaces that
+// author's *signed* poems. An anonymous poem never becomes findable by
+// searching the name of the person who wrote it.
+const buildSearchFilter = async (search) => {
+  if (!search) return null;
+
+  const matchingAuthors = await User.find({ username: { $regex: search, $options: "i" } }).select("_id");
+  const matchingAuthorIds = matchingAuthors.map((u) => u._id);
+
+  return {
+    $or: [
+      { title: { $regex: search, $options: "i" } },
+      { body: { $regex: search, $options: "i" } },
+      { isAnonymous: false, author: { $in: matchingAuthorIds } },
+    ],
+  };
 };
 
 // GET /api/poems?search=&tag=&sort=new|popular&page=1&limit=12
@@ -19,12 +33,7 @@ router.get("/", attachUserIfPresent, async (req, res) => {
 
     const filter = {};
     if (tag) filter.tags = tag.toLowerCase();
-    if (search) {
-      filter.$or = [
-        { title: { $regex: search, $options: "i" } },
-        { body: { $regex: search, $options: "i" } },
-      ];
-    }
+    Object.assign(filter, await buildSearchFilter(search));
 
     const sortOption = sort === "popular" ? { createdAt: -1 } : { createdAt: -1 };
 
@@ -52,11 +61,17 @@ router.get("/", attachUserIfPresent, async (req, res) => {
   }
 });
 
-// GET /api/poems/mine — poems the logged-in user has written
+// GET /api/poems/mine?signed=true|false&search= — poems the logged-in user
+// has written; `signed=true` filters to just the ones they signed their
+// name to, `signed=false` to just the ones they posted anonymously.
 router.get("/mine", requireAuth, async (req, res) => {
   try {
+    const { search = "" } = req.query;
     const { page, limit, skip } = paginate(req.query);
     const filter = { author: req.user.id };
+    if (req.query.signed === "true") filter.isAnonymous = false;
+    else if (req.query.signed === "false") filter.isAnonymous = true;
+    Object.assign(filter, await buildSearchFilter(search));
 
     const [poems, total] = await Promise.all([
       Poem.find(filter).populate("author", "username").sort({ createdAt: -1 }).skip(skip).limit(limit),
@@ -74,11 +89,13 @@ router.get("/mine", requireAuth, async (req, res) => {
   }
 });
 
-// GET /api/poems/favorites — poems the logged-in user has liked
+// GET /api/poems/favorites?search= — poems the logged-in user has liked
 router.get("/favorites", requireAuth, async (req, res) => {
   try {
+    const { search = "" } = req.query;
     const { page, limit, skip } = paginate(req.query);
     const filter = { likedBy: req.user.id };
+    Object.assign(filter, await buildSearchFilter(search));
 
     const [poems, total] = await Promise.all([
       Poem.find(filter).populate("author", "username").sort({ createdAt: -1 }).skip(skip).limit(limit),
@@ -128,6 +145,38 @@ router.post("/", requireAuth, async (req, res) => {
     res.status(201).json({ poem: poem.toPublicJSON(req.user.id) });
   } catch (err) {
     res.status(400).json({ message: "Could not save your poem", error: err.message });
+  }
+});
+
+// PATCH /api/poems/:id — only the poem's own author can edit it, including
+// flipping it between signed and anonymous.
+router.patch("/:id", requireAuth, async (req, res) => {
+  try {
+    const poem = await Poem.findById(req.params.id);
+    if (!poem) return res.status(404).json({ message: "That poem could not be found" });
+
+    if (poem.author.toString() !== req.user.id) {
+      return res.status(403).json({ message: "This poem does not belong to you" });
+    }
+
+    const { title, body, isAnonymous, tags } = req.body;
+
+    if (body !== undefined) {
+      if (!body.trim()) {
+        return res.status(400).json({ message: "Your poem needs some words before it can be shared" });
+      }
+      poem.body = body;
+    }
+    if (title !== undefined) poem.title = title;
+    if (isAnonymous !== undefined) poem.isAnonymous = isAnonymous;
+    if (tags !== undefined) poem.tags = tags;
+
+    await poem.save();
+    await poem.populate("author", "username");
+
+    res.json(poem.toPublicJSON(req.user.id));
+  } catch (err) {
+    res.status(400).json({ message: "Could not update that poem", error: err.message });
   }
 });
 

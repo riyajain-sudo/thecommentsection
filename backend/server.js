@@ -5,6 +5,7 @@ import rateLimit from "express-rate-limit";
 import connectDB from "./config/db.js";
 import poemRoutes from "./routes/poems.js";
 import authRoutes from "./routes/auth.js";
+import userRoutes from "./routes/users.js";
 
 
 //this is for Cloudflare to work with Vite, otherwise it will throw a 403 error when trying to access the API from the frontend
@@ -55,6 +56,8 @@ const authLimiter = rateLimit({
   message: { message: "Too many attempts, please wait a bit and try again" },
 });
 app.use("/api/auth", authLimiter, authRoutes);
+
+app.use("/api/users", userRoutes);
 
 app.get("/api/health", (req, res) => res.json({ status: "ok" }));
 

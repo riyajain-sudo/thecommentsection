@@ -13,6 +13,9 @@ export default function PoemPage() {
   const [error, setError] = useState("");
   const [popping, setPopping] = useState(false);
   const [likeError, setLikeError] = useState("");
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   useEffect(() => {
     fetchPoem(id)
@@ -38,12 +41,14 @@ export default function PoemPage() {
   };
 
   const handleDelete = async () => {
-    if (!window.confirm("Take this poem down for good?")) return;
+    setDeleteError("");
+    setDeleting(true);
     try {
       await deletePoem(id);
       navigate("/");
     } catch {
-      window.alert("Couldn't take it down right now. Please try again.");
+      setDeleteError("Couldn't take it down right now. Please try again.");
+      setDeleting(false);
     }
   };
 
@@ -58,7 +63,7 @@ export default function PoemPage() {
     );
   }
 
-  const author = poem.isAnonymous || !poem.authorName ? "Anonymous" : poem.authorName;
+  const isSigned = !poem.isAnonymous && poem.authorName;
   const date = new Date(poem.createdAt).toLocaleDateString(undefined, {
     year: "numeric",
     month: "long",
@@ -69,7 +74,13 @@ export default function PoemPage() {
     <div className="container">
       <article className="poem-detail">
         <div className="poem-detail__meta">
-          <span>{author}</span>
+          {isSigned ? (
+            <Link to={`/u/${encodeURIComponent(poem.authorName)}`} className="poem-card__author--link">
+              {poem.authorName}
+            </Link>
+          ) : (
+            <span>Anonymous</span>
+          )}
           <span>·</span>
           <span>{date}</span>
         </div>
@@ -95,12 +106,36 @@ export default function PoemPage() {
             {poem.likes} {poem.likes === 1 ? "person" : "people"} felt this
           </button>
 
-          {poem.isOwner && (
-            <button className="btn btn--ghost" onClick={handleDelete}>
-              Take down
-            </button>
+          {poem.isOwner && !confirmingDelete && (
+            <>
+              <Link to={`/poems/${id}/edit`} className="btn btn--ghost">
+                Touch it up
+              </Link>
+              <button className="btn btn--ghost" onClick={() => setConfirmingDelete(true)}>
+                Take down
+              </button>
+            </>
           )}
         </div>
+
+        {poem.isOwner && confirmingDelete && (
+          <div className="danger-zone__confirm">
+            <p>Take this poem down for good? There's no getting it back.</p>
+            {deleteError && <div className="banner banner--error">{deleteError}</div>}
+            <div className="form-actions" style={{ justifyContent: "flex-start" }}>
+              <button className="btn btn--danger" onClick={handleDelete} disabled={deleting}>
+                {deleting ? "Taking it down..." : "Yes, take it down"}
+              </button>
+              <button
+                className="btn btn--ghost"
+                onClick={() => setConfirmingDelete(false)}
+                disabled={deleting}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
 
         {likeError && (
           <p style={{ marginTop: 12, fontSize: "0.85rem", color: "var(--color-ink-soft)" }}>

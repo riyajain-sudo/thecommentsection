@@ -51,6 +51,10 @@ poemSchema.index({ title: "text", body: "text" });
 // relative to whoever is asking.
 poemSchema.methods.toPublicJSON = function (currentUserId) {
   const authorDoc = this.author && this.author.username ? this.author : null;
+  // this.author can come back null after populate() if the account that
+  // wrote the poem was since deleted — treat that like an anonymous poem
+  // instead of throwing.
+  const authorId = this.author ? this.author._id || this.author : null;
 
   return {
     id: this._id,
@@ -63,9 +67,10 @@ poemSchema.methods.toPublicJSON = function (currentUserId) {
     likedByMe: currentUserId
       ? this.likedBy.some((id) => id.toString() === currentUserId.toString())
       : false,
-    isOwner: currentUserId
-      ? (this.author._id || this.author).toString() === currentUserId.toString()
-      : false,
+    isOwner:
+      currentUserId && authorId
+        ? authorId.toString() === currentUserId.toString()
+        : false,
     createdAt: this.createdAt,
   };
 };

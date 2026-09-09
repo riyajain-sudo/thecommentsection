@@ -6,9 +6,11 @@ import { AuthProvider } from "./context/AuthContext";
 import Home from "./pages/Home";
 import Submit from "./pages/Submit";
 import PoemPage from "./pages/PoemPage";
+import EditPoem from "./pages/EditPoem";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import Favorites from "./pages/Favorites";
+import Account from "./pages/Account";
+import Profile from "./pages/Profile";
 
 export default function App() {
   return (
@@ -21,6 +23,7 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/poems/:id" element={<PoemPage />} />
+          <Route path="/u/:username" element={<Profile />} />
           <Route
             path="/submit"
             element={
@@ -30,10 +33,18 @@ export default function App() {
             }
           />
           <Route
-            path="/favorites"
+            path="/poems/:id/edit"
             element={
               <ProtectedRoute>
-                <Favorites />
+                <EditPoem />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/account"
+            element={
+              <ProtectedRoute>
+                <Account />
               </ProtectedRoute>
             }
           />

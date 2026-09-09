@@ -1,6 +1,7 @@
 import express from "express";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
+import Poem from "../models/Poem.js";
 import { requireAuth } from "../middleware/auth.js";
 
 const router = express.Router();
@@ -71,6 +72,23 @@ router.get("/me", requireAuth, async (req, res) => {
   const user = await User.findById(req.user.id);
   if (!user) return res.status(404).json({ message: "Account not found" });
   res.json({ user: user.toPublicJSON() });
+});
+
+// DELETE /api/auth/me — permanently deletes the account, every poem it
+// authored, and its likes left on other people's poems.
+router.delete("/me", requireAuth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: "Account not found" });
+
+    await Poem.deleteMany({ author: user.id });
+    await Poem.updateMany({ likedBy: user.id }, { $pull: { likedBy: user.id } });
+    await user.deleteOne();
+
+    res.json({ message: "Account deleted" });
+  } catch (err) {
+    res.status(400).json({ message: "Could not delete your account", error: err.message });
+  }
 });
 
 export default router;
