@@ -1,6 +1,7 @@
 import { Route, Routes } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import FloatingBlobs from "./components/FloatingBlobs";
+import FeatureTip from "./components/FeatureTip";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { AuthProvider } from "./context/AuthContext";
 import Home from "./pages/Home";
@@ -17,6 +18,7 @@ export default function App() {
     <AuthProvider>
       <FloatingBlobs />
       <Navbar />
+      <FeatureTip />
       <main>
         <Routes>
           <Route path="/" element={<Home />} />

@@ -1,13 +1,17 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams, Link } from "react-router-dom";
+import { useNavigate, useParams, useLocation, Link } from "react-router-dom";
 import { deletePoem, fetchPoem, likePoem } from "../api/client";
 import { useAuth } from "../context/AuthContext";
+import { computeThemeGradient } from "../utils/themeFromPoems";
+import { applyPageTheme } from "../utils/pageTheme";
 import Loader from "../components/Loader";
 
 export default function PoemPage() {
   const { id } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const justPosted = location.state?.justPosted;
   const [poem, setPoem] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -23,6 +27,13 @@ export default function PoemPage() {
       .catch(() => setError("This poem may have been taken down, or the link is off."))
       .finally(() => setLoading(false));
   }, [id]);
+
+  // Wash the page background in this poem's own theme, and put it back to
+  // the default the moment it's left.
+  useEffect(() => {
+    if (!poem) return;
+    return applyPageTheme(computeThemeGradient([poem]));
+  }, [poem]);
 
   const handleLike = async () => {
     if (!user) {
@@ -45,7 +56,7 @@ export default function PoemPage() {
     setDeleting(true);
     try {
       await deletePoem(id);
-      navigate("/");
+      navigate("/?tab=mine");
     } catch {
       setDeleteError("Couldn't take it down right now. Please try again.");
       setDeleting(false);
@@ -73,6 +84,15 @@ export default function PoemPage() {
   return (
     <div className="container">
       <article className="poem-detail">
+        {justPosted && (
+          <div className="banner banner--success">
+            Your poem is hanging on the line.{" "}
+            <Link to="/?tab=mine" style={{ textDecoration: "underline", fontWeight: 700 }}>
+              See your line
+            </Link>
+          </div>
+        )}
+
         <div className="poem-detail__meta">
           {isSigned ? (
             <Link to={`/u/${encodeURIComponent(poem.authorName)}`} className="poem-card__author--link">

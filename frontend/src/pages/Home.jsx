@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { fetchPoems, fetchMyPoems, fetchFavorites } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { usePoemFeed, INITIAL_PAGE_SIZE } from "../hooks/usePoemFeed";
 import { useLoadMoreSentinel } from "../hooks/useLoadMoreSentinel";
+import { computeThemeGradient } from "../utils/themeFromPoems";
+import { applyPageTheme } from "../utils/pageTheme";
 import PoemCard from "../components/PoemCard";
 import Loader from "../components/Loader";
 import Dropdown from "../components/Dropdown";
@@ -43,7 +46,18 @@ const TAB_META = {
 
 export default function Home() {
   const { user } = useAuth();
-  const [tab, setTab] = useState("line"); // "line" | "mine" | "favorites"
+
+  // The active tab lives in the URL (?tab=mine) rather than plain component
+  // state, so clicking into a poem and then hitting the browser's back
+  // button returns to whichever tab you clicked it from, instead of always
+  // resetting to "The Line".
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const tab = tabParam === "mine" || tabParam === "favorites" ? tabParam : "line";
+  const setTab = (nextTab) => {
+    setSearchParams(nextTab === "line" ? {} : { tab: nextTab }, { replace: true });
+  };
+
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState("new");
   const [mineFilter, setMineFilter] = useState("all"); // "all" | "signed" | "unsigned"
@@ -90,6 +104,60 @@ export default function Home() {
   useEffect(() => {
     if (!user && tab !== "line") setTab("line");
   }, [user, tab]);
+
+  const [mineGradient, setMineGradient] = useState(null);
+
+  // Recomputed from the 5 most recent poems every time this tab is opened —
+  // independent of the Signed/Unsigned filter and search box above, since
+  // this should always reflect everything you've written, not a filtered
+  // view of it.
+  useEffect(() => {
+    if (tab !== "mine" || !user) {
+      setMineGradient(null);
+      return;
+    }
+    let cancelled = false;
+    fetchMyPoems({ page: 1, limit: 5 })
+      .then((data) => {
+        if (!cancelled) setMineGradient(computeThemeGradient(data.poems));
+      })
+      .catch(() => {
+        if (!cancelled) setMineGradient(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [tab, user]);
+
+  const [favGradient, setFavGradient] = useState(null);
+
+  // Same idea, but from the 5 most recently favorited poems — the "genre"
+  // you love reading most, independent of the search box on this tab.
+  useEffect(() => {
+    if (tab !== "favorites" || !user) {
+      setFavGradient(null);
+      return;
+    }
+    let cancelled = false;
+    fetchFavorites({ page: 1, limit: 5 })
+      .then((data) => {
+        if (!cancelled) setFavGradient(computeThemeGradient(data.poems));
+      })
+      .catch(() => {
+        if (!cancelled) setFavGradient(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [tab, user]);
+
+  // Wash the whole page background in the computed gradient while "Hung by
+  // Me" or "Favorites" is open, and put it back to the default the moment
+  // any other tab is picked (or this page is left altogether).
+  useEffect(() => {
+    const activeGradient = tab === "mine" ? mineGradient : tab === "favorites" ? favGradient : null;
+    return applyPageTheme(activeGradient);
+  }, [tab, mineGradient, favGradient]);
 
   const feed = { line: lineFeed, mine: mineFeed, favorites: favoritesFeed }[tab];
   const meta = TAB_META[tab];

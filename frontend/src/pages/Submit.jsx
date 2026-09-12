@@ -36,7 +36,7 @@ export default function Submit() {
         tags,
       });
 
-      navigate(`/poems/${poem.id}`);
+      navigate(`/poems/${poem.id}`, { state: { justPosted: true } });
     } catch (err) {
       setError(
         err.response?.data?.message ||
