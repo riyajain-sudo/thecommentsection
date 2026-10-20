@@ -1,7 +1,9 @@
-// Shared pagination helper: reads page/limit off a request's query string
-// and returns them alongside the corresponding skip offset.
-export const paginate = (query) => {
-  const page = Math.max(parseInt(query.page, 10) || 1, 1);
-  const limit = Math.min(Math.max(parseInt(query.limit, 10) || 12, 1), 50);
+export const paginate = (query = {}) => {
+  const parsePositive = (value, fallback) => {
+    const n = Number(value);
+    return Number.isSafeInteger(n) && n > 0 ? n : fallback;
+  };
+  const limit = Math.min(parsePositive(query.limit, 12), 50);
+  const page = Math.min(parsePositive(query.page, 1), 1000);
   return { page, limit, skip: (page - 1) * limit };
 };

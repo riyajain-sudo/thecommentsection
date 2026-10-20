@@ -1,3 +1,4 @@
+import User from "../models/User.js";
 import jwt from "jsonwebtoken";
 
 const getTokenFromHeader = (req) => {
@@ -7,7 +8,7 @@ const getTokenFromHeader = (req) => {
 };
 
 // Blocks the request unless a valid token is present.
-export const requireAuth = (req, res, next) => {
+export const requireAuth = async (req, res, next) => {
   const token = getTokenFromHeader(req);
   if (!token) {
     return res.status(401).json({ message: "Please log in to do that" });
@@ -15,8 +16,10 @@ export const requireAuth = (req, res, next) => {
 
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
+    const activeUser = await User.exists({ _id: payload.sub });
+    if (!activeUser) return res.status(401).json({ message: "Your session is no longer valid" });
     req.user = { id: payload.sub };
-    next();
+    return next();
   } catch {
     return res.status(401).json({ message: "Your session has expired, please log in again" });
   }
@@ -25,15 +28,15 @@ export const requireAuth = (req, res, next) => {
 // Attaches req.user if a valid token is present, but doesn't block the
 // request otherwise. Used on public GET routes so we can flag things like
 // "did I like this poem" without forcing a login.
-export const attachUserIfPresent = (req, res, next) => {
+export const attachUserIfPresent = async (req, res, next) => {
   const token = getTokenFromHeader(req);
   if (!token) return next();
 
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = { id: payload.sub };
+    if (await User.exists({ _id: payload.sub })) req.user = { id: payload.sub };
   } catch {
-    // ignore invalid/expired tokens on optional routes
+    // Ignore invalid/expired tokens and deleted accounts on optional routes.
   }
   next();
 };

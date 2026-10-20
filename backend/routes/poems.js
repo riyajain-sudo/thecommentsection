@@ -11,15 +11,18 @@ const router = express.Router();
 // author's *signed* poems. An anonymous poem never becomes findable by
 // searching the name of the person who wrote it.
 const buildSearchFilter = async (search) => {
+  if (typeof search !== "string") throw Object.assign(new Error("Search must be a string"), { status: 400 });
   if (!search) return null;
+  if (search.length > 64) throw Object.assign(new Error("Search must be 64 characters or fewer"), { status: 400 });
+  const literal = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-  const matchingAuthors = await User.find({ username: { $regex: search, $options: "i" } }).select("_id");
+  const matchingAuthors = await User.find({ username: { $regex: literal, $options: "i" } }).select("_id");
   const matchingAuthorIds = matchingAuthors.map((u) => u._id);
 
   return {
     $or: [
-      { title: { $regex: search, $options: "i" } },
-      { body: { $regex: search, $options: "i" } },
+      { title: { $regex: literal, $options: "i" } },
+      { body: { $regex: literal, $options: "i" } },
       { isAnonymous: false, author: { $in: matchingAuthorIds } },
     ],
   };
@@ -35,19 +38,32 @@ router.get("/", attachUserIfPresent, async (req, res) => {
     if (tag) filter.tags = tag.toLowerCase();
     Object.assign(filter, await buildSearchFilter(search));
 
-    const sortOption = sort === "popular" ? { createdAt: -1 } : { createdAt: -1 };
-
-    let poemsQuery = Poem.find(filter).populate("author", "username").sort(sortOption);
-    if (sort !== "popular") {
-      poemsQuery = poemsQuery.skip(skip).limit(limit);
-    }
-
-    let [poems, total] = await Promise.all([poemsQuery, Poem.countDocuments(filter)]);
-
+    const totalPromise = Poem.countDocuments(filter);
+    let poems;
+    let total;
     if (sort === "popular") {
-      poems = poems
-        .sort((a, b) => b.likedBy.length - a.likedBy.length)
-        .slice(skip, skip + limit);
+      // Rank and page in MongoDB before loading/populating poem documents.
+      const [ranked, count] = await Promise.all([
+        Poem.aggregate([
+          { $match: filter },
+          { $addFields: { _popularLikes: { $size: { $ifNull: ["$likedBy", []] } } } },
+          { $sort: { _popularLikes: -1, createdAt: -1, _id: 1 } },
+          { $skip: skip },
+          { $limit: limit },
+          { $project: { _id: 1 } },
+        ]),
+        totalPromise,
+      ]);
+      total = count;
+      const ids = ranked.map((row) => row._id);
+      const documents = await Poem.find({ _id: { $in: ids } }).populate("author", "username");
+      const byId = new Map(documents.map((poem) => [String(poem._id), poem]));
+      poems = ids.map((id) => byId.get(String(id))).filter(Boolean);
+    } else {
+      [poems, total] = await Promise.all([
+        Poem.find(filter).populate("author", "username").sort({ createdAt: -1, _id: -1 }).skip(skip).limit(limit),
+        totalPromise,
+      ]);
     }
 
     res.json({
@@ -57,7 +73,7 @@ router.get("/", attachUserIfPresent, async (req, res) => {
       pages: Math.ceil(total / limit) || 1,
     });
   } catch (err) {
-    res.status(500).json({ message: "Could not load poems", error: err.message });
+    res.status(err.status || 500).json({ message: err.status ? err.message : "Could not load poems" });
   }
 });
 
@@ -85,7 +101,7 @@ router.get("/mine", requireAuth, async (req, res) => {
       pages: Math.ceil(total / limit) || 1,
     });
   } catch (err) {
-    res.status(500).json({ message: "Could not load your poems", error: err.message });
+    res.status(err.status || 500).json({ message: err.status ? err.message : "Could not load your poems" });
   }
 });
 

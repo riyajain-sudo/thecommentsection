@@ -109,9 +109,12 @@ token returned from register/login).
 | POST   | `/api/auth/register`   | Create an account                                |
 | POST   | `/api/auth/login`      | Log in, get a token                              |
 | GET    | `/api/auth/me`         | 🔒 Get the logged-in user                        |
-| GET    | `/api/poems`           | List poems (`search`, `tag`, `sort`, `page`)     |
+| GET    | `/api/poems`           | List poems (`search`, `tag`, `sort`, `page`); tag filter is API-only     |
 | GET    | `/api/poems/:id`       | Get a single poem                                |
 | GET    | `/api/poems/mine`      | 🔒 Poems you've written                          |
+| PATCH  | `/api/poems/:id`       | 🔒 Edit a poem you wrote                         |
+| DELETE | `/api/auth/me`         | 🔒 Delete your account                           |
+| GET    | `/api/users/:username/poems` | Signed poems on a public profile           |
 | GET    | `/api/poems/favorites` | 🔒 Poems you've liked                            |
 | POST   | `/api/poems`           | 🔒 Create a poem (`isAnonymous` controls display) |
 | POST   | `/api/poems/:id/like`  | 🔒 Toggle like on/off                            |
@@ -119,12 +122,14 @@ token returned from register/login).
 
 ## Notes on moderation
 
-This starter has no profanity filter, auth, or admin panel — it's a
-clean base to build on. Before putting it in front of the public
+Authentication (JWT registration, login, and protected routes) is implemented. This starter does not include content moderation, reporting, or an admin panel. Before putting it in front of the public
 internet, you'll likely want to add:
 
 - Basic content moderation / reporting
 - Stronger rate limiting (a simple limiter is included as a starting point)
-- An admin route to remove poems without needing the poster's edit token
+- An admin moderation route (poem edits/deletes currently require the author's authenticated account)
 
 Enjoy the line. 🧺
+
+
+The backend example environment file uses `MONGO_URI`, `JWT_SECRET`, optional `JWT_EXPIRES_IN`, `CLIENT_ORIGIN` (comma-separated frontend origins), and `PORT`. The frontend uses `VITE_API_URL`; rebuild the frontend after changing it. Deploy the static `frontend/dist` with SPA fallback and the Node API separately, setting `CLIENT_ORIGIN` to the deployed frontend origin.

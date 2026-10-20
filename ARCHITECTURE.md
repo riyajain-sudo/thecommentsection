@@ -62,7 +62,7 @@ frontend/src/
 │   └── Loader.jsx              # loading state
 └── pages/
     ├── Home.jsx, PoemPage.jsx, Submit.jsx
-    └── Login.jsx, Register.jsx, Favorites.jsx
+    └── Login.jsx, Register.jsx, Account.jsx, EditPoem.jsx, Profile.jsx
 ```
 
 ---
@@ -199,7 +199,7 @@ Base path `/api`. All bodies and responses are JSON; list endpoints share a
 | `POST /auth/register` | open | Validates uniqueness of email + username, hashes the password, creates the user, returns a signed token. | `username, email, password` (password ≥ 8 chars) |
 | `POST /auth/login` | open | Re-selects `passwordHash`, compares with bcrypt, signs a token on match. | `email, password` |
 | `GET /auth/me` | 🔒 auth | Returns the profile for the token's `sub`. | — |
-| `GET /poems` | optional | Lists poems; regex search on title/body, exact tag filter, sort by newest or by like count (popular sorts in memory, then paginates). | `search, tag, sort, page, limit` |
+| `GET /poems` | optional | Lists poems; regex search on title/body, exact tag filter, sort by newest or by like count (popular ranking is aggregated, skipped, and limited in MongoDB before author population). | `search, tag, sort, page, limit` |
 | `GET /poems/mine` | 🔒 auth | Poems where `author === req.user.id`, newest first. | `page, limit` |
 | `GET /poems/favorites` | 🔒 auth | Poems where `likedBy` contains the current user. | `page, limit` |
 | `GET /poems/:id` | optional | Single poem, populated with author username; 404 if missing or the id is malformed. | — |
@@ -264,7 +264,7 @@ No Redux, no query cache — just one context for the session, and local
 - `logout()` → `clearToken` + `setUser(null)`
 - `user, loading` — read via `useAuth()`
 
-**Per-page data fetching** — `Home.jsx` and `Favorites.jsx` hold
+**Per-page data fetching** — `Home.jsx` holds
 `poems / page / pages / loading / error` locally and re-fetch on dependency
 change. Home debounces search/sort input by 300ms before calling
 `fetchPoems()`, and cancels the pending timeout on unmount or re-trigger.

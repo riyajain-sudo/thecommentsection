@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export const INITIAL_PAGE_SIZE = 12;
 export const MORE_PAGE_SIZE = 6;
@@ -15,25 +15,31 @@ export function usePoemFeed({ fetcher, active, resetKey, debounceMs = 0 }) {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState("");
+  const requestGeneration = useRef(0);
 
   useEffect(() => {
-    if (!active) return;
+    const generation = ++requestGeneration.current;
     let cancelled = false;
+    if (!active) {
+      setItems([]); setTotal(0); setLoading(false); setLoadingMore(false);
+      return () => { cancelled = true; };
+    }
+    setItems([]); setTotal(0); setLoading(true); setLoadingMore(false);
 
     const timeout = setTimeout(() => {
       setLoading(true);
       setError("");
       fetcher({ page: 1, limit: INITIAL_PAGE_SIZE })
         .then((data) => {
-          if (cancelled) return;
+          if (cancelled || generation !== requestGeneration.current) return;
           setItems(data.poems);
           setTotal(data.total);
         })
         .catch(() => {
-          if (!cancelled) setError("Couldn't reach the CommentSection. Check that the API server is running.");
+          if (!cancelled && generation === requestGeneration.current) setError("Couldn't reach the CommentSection. Check that the API server is running.");
         })
         .finally(() => {
-          if (!cancelled) setLoading(false);
+          if (!cancelled && generation === requestGeneration.current) setLoading(false);
         });
     }, debounceMs);
 
@@ -48,14 +54,16 @@ export function usePoemFeed({ fetcher, active, resetKey, debounceMs = 0 }) {
 
   const loadMore = useCallback(() => {
     if (loading || loadingMore || !hasMore) return;
+    const generation = requestGeneration.current;
     setLoadingMore(true);
     fetcher({ page: items.length / MORE_PAGE_SIZE + 1, limit: MORE_PAGE_SIZE })
       .then((data) => {
+        if (generation !== requestGeneration.current) return;
         setItems((prev) => [...prev, ...data.poems]);
         setTotal(data.total);
       })
-      .catch(() => setError("Couldn't load more poems right now."))
-      .finally(() => setLoadingMore(false));
+      .catch(() => { if (generation === requestGeneration.current) setError("Couldn't load more poems right now."); })
+      .finally(() => { if (generation === requestGeneration.current) setLoadingMore(false); });
   }, [fetcher, items.length, loading, loadingMore, hasMore]);
 
   return { items, total, loading, loadingMore, error, hasMore, loadMore };
